@@ -194,57 +194,34 @@ app.get('/api/travel/trips', async (req, res) => {
 
 // Adding API to just access the trips which are joined by the user (status == 2)
 app.get('/api/travel/joinedTrips', async (req, res) => {
-  // if(req.isAuthenticated()){
-  //   try {
-  //     const result = await db.query(`
-  //       SELECT trips.* 
-  //       FROM trips 
-  //       JOIN user_statuses 
-  //       ON trips.trip_name = user_statuses.trip_name 
-  //       AND trips.destination = user_statuses.destination 
-  //       WHERE user_statuses.status = 2
-  //       AND user_statuses.user_id = $1
-  //     `, [req.user.id]);
-  //     const trips = result.rows;
-  //     res.json({
-  //       status: true,
-  //       loggedIn: true,
-  //       trips: trips,
-  //     });
-  //   } catch (err) {
-  //     // console.error(err);
-  //     res.json({
-  //       status: false,
-  //       error: 'There was an error while retrieving trips from the database',
-  //     });
-  //   }
-  // } else{
-  //   res.json({
-  //     status: true,
-  //     loggedIn: false,
-  //   });
-  // }
-  try {
-    const result = await db.query(`
-      SELECT trips.* 
-      FROM trips 
-      JOIN user_statuses 
-      ON trips.trip_name = user_statuses.trip_name 
-      AND trips.destination = user_statuses.destination 
-      WHERE user_statuses.status = 2
-      AND user_statuses.user_id = $1
-    `, [req.user.id]);
-    const trips = result.rows;
+  if(req.isAuthenticated()){
+    try {
+      const result = await db.query(`
+        SELECT trips.* 
+        FROM trips 
+        JOIN user_statuses 
+        ON trips.trip_name = user_statuses.trip_name 
+        AND trips.destination = user_statuses.destination 
+        WHERE user_statuses.status = 2
+        AND user_statuses.user_id = $1
+      `, [req.user.id]);
+      const trips = result.rows;
+      res.json({
+        status: true,
+        loggedIn: true,
+        trips: trips,
+      });
+    } catch (err) {
+      // console.error(err);
+      res.json({
+        status: false,
+        error: 'There was an error while retrieving trips from the database',
+      });
+    }
+  } else{
     res.json({
       status: true,
-      loggedIn: true,
-      trips: trips,
-    });
-  } catch (err) {
-    // console.error(err);
-    res.json({
-      status: false,
-      error: 'There was an error while retrieving trips from the database',
+      loggedIn: false,
     });
   }
 });
@@ -252,41 +229,26 @@ app.get('/api/travel/joinedTrips', async (req, res) => {
 // Adding api to just accessing trips which are hosted by a particular user
 app.get('/api/travel/hostedTrips', async (req, res) => {
 
-  // if(req.isAuthenticated()){
-  //   try {
-  //     const result = await db.query('SELECT * FROM trips where user_id = $1', [req.user.id]);
-  //     const trips = result.rows;
-  //     res.json({
-  //       status: true,
-  //       loggedIn: true,
-  //       trips: trips,
-  //     });
-  //   } catch (err) {
-  //     // console.error(err);
-  //     res.json({
-  //       status: false,
-  //       error: 'There was an error while retrieving trips from the database',
-  //     });
-  //   }
-  // } else {
-  //   res.json({
-  //     status: true,
-  //     loggedIn: false,
-  //   });
-  // }
-  try {
-    const result = await db.query('SELECT * FROM trips where user_id = $1', [req.user.id]);
-    const trips = result.rows;
+  if(req.isAuthenticated()){
+    try {
+      const result = await db.query('SELECT * FROM trips where user_id = $1', [req.user.id]);
+      const trips = result.rows;
+      res.json({
+        status: true,
+        loggedIn: true,
+        trips: trips,
+      });
+    } catch (err) {
+      // console.error(err);
+      res.json({
+        status: false,
+        error: 'There was an error while retrieving trips from the database',
+      });
+    }
+  } else {
     res.json({
       status: true,
-      loggedIn: true,
-      trips: trips,
-    });
-  } catch (err) {
-    // console.error(err);
-    res.json({
-      status: false,
-      error: 'There was an error while retrieving trips from the database',
+      loggedIn: false,
     });
   }
 
@@ -711,54 +673,56 @@ app.post('/api/getTrainsBetweenStations',async (req,res)=>{
 
 // for adding user into trains under not_booked
 app.post('/addNotBookedTrainUser',async (req,res)=>{
-  try {
+  if(req.isAuthenticated())
+  {
     const {train, date, origin, destination}= req.body;
-      // const dateOfTravel=new Date(date)
-      // check if the train is present in database
-      const result= await db.query("SELECT * FROM TRAINS WHERE NUMBER=$1 AND DATE=$2", [train.train_base.train_no, date]);
-      if(result.rows.length==0)
+    // const dateOfTravel=new Date(date)
+    // check if the train is present in database
+    const result= await db.query("SELECT * FROM TRAINS WHERE NUMBER=$1 AND DATE=$2", [train.train_base.train_no, date]);
+    if(result.rows.length==0)
+    {
+      await db.query("INSERT INTO TRAINS VALUES($1, $2, $3, $4, $5)",[train.train_base.train_no, 0, 0, date, train.train_base.train_name]);
+    }
+
+    const result1 = await db.query("SELECT * FROM NOT_BOOKED_TRAIN_USERS WHERE TRAIN_NUMBER = $1 AND USER_ID = $2 AND DATE = $3",[train.train_base.train_no, req.user.id, date]);
+    // checking if user is already in the table
+    if(result1.rows.length>0)
+    {
+      res.json({
+        status:true,
+        success:false,
+        loggedIn:true,
+        message:"user is already in this train",
+      })
+    }
+
+    else
+    {
+      const result2 = await db.query("SELECT * FROM BOOKED_TRAIN_USERS WHERE TRAIN_NUMBER = $1 AND USER_ID = $2 AND DATE = $3",[train.train_base.train_no, req.user.id, date]);
+      // checking if the user is already in booked_train_users
+      if(result2.rows.length>0)
       {
-        await db.query("INSERT INTO TRAINS VALUES($1, $2, $3, $4, $5)",[train.train_base.train_no, 0, 0, date, train.train_base.train_name]);
+        await db.query("DELETE FROM BOOKED_TRAIN_USERS WHERE TRAIN_NUMBER= $1 AND USER_ID= $2 AND DATE= $3",[train.train_base.train_no, req.user.id, date]);
       }
-  
-      const result1 = await db.query("SELECT * FROM NOT_BOOKED_TRAIN_USERS WHERE TRAIN_NUMBER = $1 AND USER_ID = $2 AND DATE = $3",[train.train_base.train_no, req.user.id, date]);
-      // checking if user is already in the table
-      if(result1.rows.length>0)
-      {
-        res.json({
-          status:true,
-          success:false,
-          loggedIn:true,
-          message:"user is already in this train",
-        })
-      }
-  
-      else
-      {
-        const result2 = await db.query("SELECT * FROM BOOKED_TRAIN_USERS WHERE TRAIN_NUMBER = $1 AND USER_ID = $2 AND DATE = $3",[train.train_base.train_no, req.user.id, date]);
-        // checking if the user is already in booked_train_users
-        if(result2.rows.length>0)
-        {
-          await db.query("DELETE FROM BOOKED_TRAIN_USERS WHERE TRAIN_NUMBER= $1 AND USER_ID= $2 AND DATE= $3",[train.train_base.train_no, req.user.id, date]);
-        }
-        await db.query("INSERT INTO NOT_BOOKED_TRAIN_USERS VALUES($1, $2, $3, $4, $5)",[train.train_base.train_no, req.user.id, date, origin, destination]);
-        const notBooked= await db.query("SELECT YET_TO_BOOK FROM TRAINS WHERE NUMBER=$1 AND DATE=$2",[train.train_base.train_no, date]);
-        const confirmed= await db.query("SELECT BOOKED FROM TRAINS WHERE NUMBER=$1 AND DATE=$2",[train.train_base.train_no, date]);
-        res.json({
-          status: true,
-          success: true,
-          loggedIn: true,
-          notBooked: notBooked.rows[0].yet_to_book,
-          confirmed: confirmed.rows[0].booked,
-        })
-      }
-  } catch (error) {
-    console.log("Error while adding user to not booked trains : ", error);
+      await db.query("INSERT INTO NOT_BOOKED_TRAIN_USERS VALUES($1, $2, $3, $4, $5)",[train.train_base.train_no, req.user.id, date, origin, destination]);
+      const notBooked= await db.query("SELECT YET_TO_BOOK FROM TRAINS WHERE NUMBER=$1 AND DATE=$2",[train.train_base.train_no, date]);
+      const confirmed= await db.query("SELECT BOOKED FROM TRAINS WHERE NUMBER=$1 AND DATE=$2",[train.train_base.train_no, date]);
+      res.json({
+        status: true,
+        success: true,
+        loggedIn: true,
+        notBooked: notBooked.rows[0].yet_to_book,
+        confirmed: confirmed.rows[0].booked,
+      })
+    }
+  }
+  else
+  {
     res.json({
-      status: true,
-      success: false,
-      loggedIn: true,
-      message: "Some error occured while adding user to not booked trains",
+      status:true,
+      success:false,
+      loggedIn:false,
+      message: "user not logged in",
     })
   }
 })

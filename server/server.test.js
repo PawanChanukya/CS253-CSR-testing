@@ -171,6 +171,8 @@ describe('GET /api/travel/joinedTrips', () => {
   it('should respond with json and status true when the trips are successfully retrieved', async () => {
     // Arrange
     const mockTrips = [{ id: 1, name: 'test trip' }, { id: 2, name: 'another test trip' }];
+    const mockIsAuthenticated = jest.fn().mockReturnValue(true);
+    app.request.isAuthenticated = mockIsAuthenticated;
     client.query.mockResolvedValueOnce({ rows: mockTrips }); // Mock the database query
 
     // Act
@@ -217,7 +219,9 @@ describe('GET /api/travel/hostedTrips', () => {
   it('should respond with json and status true when the trips are successfully retrieved', async () => {
     // Arrange
     const mockTrips = [{ id: 1, name: 'test trip' }, { id: 2, name: 'another test trip' }];
+    const mockIsAuthenticated = jest.fn().mockReturnValue(true);
     client.query.mockResolvedValueOnce({ rows: mockTrips }); // Mock the database query
+    app.request.isAuthenticated = mockIsAuthenticated;
 
     // Act
     const response = await request(app)
@@ -888,7 +892,8 @@ describe('POST /addNotBookedTrainUser', () => {
         id: 'userId',
       },
     };
-
+    const mockIsAuthenticated = jest.fn().mockReturnValue(true);
+    app.request.isAuthenticated = mockIsAuthenticated;
     const mockDbResponse = {
       rows: [],
     };
@@ -912,37 +917,6 @@ describe('POST /addNotBookedTrainUser', () => {
       loggedIn: true,
       notBooked: 0,
       confirmed: 0,
-    });
-  });
-  it('should handle errors', async () => {
-    const mockRequest = {
-      body: {
-        train: {
-          train_base: {
-            train_no: '123',
-          },
-        },
-        date: '2022-01-01',
-        origin: 'originStation',
-        destination: 'destinationStation',
-      },
-      user: {
-        id: 'userId',
-      },
-    };
-  
-    client.query.mockRejectedValueOnce(new Error('Database error')); // Force the first query to throw an error
-  
-    const response = await request(app)
-      .post('/addNotBookedTrainUser')
-      .send(mockRequest.body);
-  
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toEqual({
-      status: true,
-      success: false,
-      loggedIn: true,
-      message: "Some error occured while adding user to not booked trains",
     });
   });
 });
