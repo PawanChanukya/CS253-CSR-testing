@@ -4,6 +4,7 @@ This repo contains the testing code for server side end points conducted using j
 ## How to run the tests
 
 - Clone this repository to your local machine
+- Open a terminal window and navigate to the server directory
 - Install all the node modules using`npm i`
 - Configure the .env file as follows
 
