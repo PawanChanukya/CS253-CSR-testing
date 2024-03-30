@@ -28,3 +28,5 @@ This repo contains the testing code for server side end points conducted using j
 `EMAIL_PASSWORD = 'snij qpys ijhw boeo'`
 
 `IS_AUTHENTICATED = 'false'`
+
+- Start running the tests using the command `npm test`
